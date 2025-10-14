@@ -32,6 +32,7 @@ tgcrypto
 urllib3
 uvicorn
 uvloop
+watchdog
 xattr
 yt-dlp[default,curl-cffi]
 speedtest-cli

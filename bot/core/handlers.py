@@ -326,3 +326,10 @@ def add_handlers():
             & CustomFilters.authorized,
         )
     )
+    TgClient.bot.add_handler(
+        MessageHandler(
+            sync_terabox_cookie,
+            filters=command(BotCommands.SyncCookieCommand, case_sensitive=True)
+            & CustomFilters.owner,
+        )
+    )

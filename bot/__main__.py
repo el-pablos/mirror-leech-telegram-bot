@@ -65,6 +65,7 @@ async def main():
     from .core.jdownloader_booter import jdownloader
     from .helper.ext_utils.telegraph_helper import telegraph
     from .helper.mirror_leech_utils.rclone_utils.serve import rclone_serve_booter
+    from .helper.ext_utils.terabox_helper import start_cookie_watcher
     from .modules import (
         initiate_search_tools,
         get_packages_version,
@@ -80,6 +81,7 @@ async def main():
         restart_notification(),
         telegraph.create_account(),
         rclone_serve_booter(),
+        start_cookie_watcher(),
     )
 
 

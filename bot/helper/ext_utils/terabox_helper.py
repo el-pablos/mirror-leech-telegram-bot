@@ -4,10 +4,13 @@ Supports downloading files from Terabox/1024tera using user cookies.
 """
 
 import os
+import hashlib
 from pathlib import Path
 from typing import Dict, Optional, Callable
+from datetime import datetime
 from aiofiles import open as aiopen
 from aiofiles.os import path as aiopath
+from asyncio import create_task, sleep
 
 from ... import LOGGER, DOWNLOAD_DIR
 
@@ -160,14 +163,93 @@ async def read_terabox_cookie_from_file() -> Optional[str]:
         return None
 
 
+async def get_cookie_metadata_from_db() -> Optional[Dict]:
+    """
+    Get Terabox cookie metadata from database.
+
+    Returns:
+        dict: Cookie metadata (hash, updated timestamp, source) or None
+    """
+    try:
+        from .db_handler import database
+        from ...core.mltb_client import TgClient
+
+        if database.db is None:
+            return None
+
+        cookie_doc = await database.db.settings.cookies.find_one(
+            {"_id": TgClient.ID},
+            {
+                "terabox_cookie_hash": 1,
+                "terabox_cookie_updated": 1,
+                "terabox_cookie_source": 1
+            }
+        )
+
+        if cookie_doc:
+            return {
+                'hash': cookie_doc.get('terabox_cookie_hash'),
+                'updated': cookie_doc.get('terabox_cookie_updated'),
+                'source': cookie_doc.get('terabox_cookie_source')
+            }
+
+        return None
+
+    except Exception as e:
+        LOGGER.error(f"Error getting cookie metadata from database: {e}")
+        return None
+
+
+async def sync_cookie_file_to_db() -> bool:
+    """
+    Sync Terabox cookie from file to database if file is newer or different.
+
+    Returns:
+        bool: True if synced successfully, False otherwise
+    """
+    try:
+        # Read cookie from file
+        file_cookie = await read_terabox_cookie_from_file()
+        if not file_cookie:
+            LOGGER.debug("No cookie found in file, skipping sync")
+            return False
+
+        # Calculate file cookie hash
+        file_hash = hashlib.sha256(file_cookie.encode()).hexdigest()
+
+        # Get database cookie metadata
+        db_metadata = await get_cookie_metadata_from_db()
+
+        # Check if sync is needed
+        if db_metadata and db_metadata.get('hash') == file_hash:
+            LOGGER.debug("Cookie in database is already up-to-date")
+            return False
+
+        # Sync to database
+        LOGGER.info("Syncing cookie from file to database...")
+        success = await save_terabox_cookie_to_db(file_cookie, source='file')
+
+        if success:
+            LOGGER.info(f"✅ Cookie synced successfully (hash: {file_hash[:16]}...)")
+
+        return success
+
+    except Exception as e:
+        LOGGER.error(f"Error syncing cookie file to database: {e}")
+        return False
+
+
 async def read_terabox_cookie() -> Optional[str]:
     """
-    Read Terabox cookie with fallback mechanism.
-    Priority: Database > File
+    Read Terabox cookie with smart fallback mechanism.
+    Priority: File (if newer) > Database > File (if no database)
 
     Returns:
         str: Cookie string if found, None otherwise
     """
+    # Try to sync file to database first (if file is newer)
+    await sync_cookie_file_to_db()
+
     # Try database first
     cookie = await read_terabox_cookie_from_db()
     if cookie:
@@ -177,18 +259,19 @@ async def read_terabox_cookie() -> Optional[str]:
     cookie = await read_terabox_cookie_from_file()
     if cookie:
         # Save to database for future use
-        await save_terabox_cookie_to_db(cookie)
+        await save_terabox_cookie_to_db(cookie, source='file')
         return cookie
 
     return None
 
 
-async def save_terabox_cookie_to_db(cookie: str) -> bool:
+async def save_terabox_cookie_to_db(cookie: str, source: str = 'manual') -> bool:
     """
-    Save Terabox cookie to MongoDB database.
+    Save Terabox cookie to MongoDB database with metadata.
 
     Args:
         cookie: Cookie string to save
+        source: Source of cookie ('file', 'manual', 'command')
 
     Returns:
         bool: True if saved successfully, False otherwise
@@ -200,13 +283,24 @@ async def save_terabox_cookie_to_db(cookie: str) -> bool:
         if database.db is None:
             return False
 
+        # Calculate cookie hash for change detection
+        cookie_hash = hashlib.sha256(cookie.encode()).hexdigest()
+
+        # Save with metadata
         await database.db.settings.cookies.update_one(
             {"_id": TgClient.ID},
-            {"$set": {"terabox_cookie": cookie}},
+            {
+                "$set": {
+                    "terabox_cookie": cookie,
+                    "terabox_cookie_updated": datetime.utcnow(),
+                    "terabox_cookie_hash": cookie_hash,
+                    "terabox_cookie_source": source
+                }
+            },
             upsert=True
         )
 
-        LOGGER.info("Terabox cookie saved to database")
+        LOGGER.info(f"Terabox cookie saved to database (source: {source}, hash: {cookie_hash[:16]}...)")
         return True
 
     except Exception as e:
@@ -641,4 +735,191 @@ class TeraboxDownloader:
         """Cancel the download."""
         self.is_cancelled = True
         LOGGER.info(f"Terabox download cancelled: {self.url}")
+
+
+# ============================================================================
+# FILE WATCHER FOR AUTOMATIC COOKIE SYNC
+# ============================================================================
+
+class TeraboxCookieWatcher:
+    """
+    File watcher for automatic Terabox cookie synchronization.
+    Monitors terabox.txt for changes and syncs to database.
+    """
+
+    def __init__(self):
+        self.cookie_file = Path("terabox.txt")
+        self.is_running = False
+        self.last_hash = None
+
+    async def start(self):
+        """Start the file watcher."""
+        if self.is_running:
+            LOGGER.warning("Cookie watcher is already running")
+            return
+
+        self.is_running = True
+        LOGGER.info("🔍 Starting Terabox cookie file watcher...")
+
+        # Initial sync on startup
+        await self.check_and_sync()
+
+        # Start periodic check task
+        create_task(self._periodic_check())
+
+        LOGGER.info("✅ Terabox cookie file watcher started")
+
+    async def stop(self):
+        """Stop the file watcher."""
+        self.is_running = False
+        LOGGER.info("Terabox cookie file watcher stopped")
+
+    async def check_and_sync(self) -> bool:
+        """
+        Check if cookie file has changed and sync to database.
+
+        Returns:
+            bool: True if synced, False otherwise
+        """
+        try:
+            # Check if file exists
+            if not await aiopath.exists(self.cookie_file):
+                LOGGER.debug("Cookie file not found, skipping sync")
+                return False
+
+            # Read cookie from file
+            async with aiopen(self.cookie_file, 'r') as f:
+                cookie = await f.read()
+                cookie = cookie.strip()
+
+            if not cookie:
+                LOGGER.debug("Cookie file is empty, skipping sync")
+                return False
+
+            # Calculate hash
+            current_hash = hashlib.sha256(cookie.encode()).hexdigest()
+
+            # Check if changed
+            if self.last_hash == current_hash:
+                return False
+
+            # Cookie has changed, sync to database
+            LOGGER.info(f"🔄 Cookie file changed detected (hash: {current_hash[:16]}...)")
+            success = await save_terabox_cookie_to_db(cookie, source='file')
+
+            if success:
+                self.last_hash = current_hash
+                LOGGER.info("✅ Cookie synced to database successfully")
+                return True
+            else:
+                LOGGER.error("❌ Failed to sync cookie to database")
+                return False
+
+        except Exception as e:
+            LOGGER.error(f"Error checking cookie file: {e}")
+            return False
+
+    async def _periodic_check(self):
+        """Periodic check for file changes (every 5 seconds)."""
+        LOGGER.info("Starting periodic cookie file check (every 5 seconds)")
+
+        while self.is_running:
+            try:
+                await sleep(5)  # Check every 5 seconds
+                await self.check_and_sync()
+            except Exception as e:
+                LOGGER.error(f"Error in periodic check: {e}")
+                await sleep(5)  # Continue checking even if error occurs
+
+
+# Global watcher instance
+_cookie_watcher = None
+
+
+async def start_cookie_watcher():
+    """Start the global cookie watcher."""
+    global _cookie_watcher
+
+    if _cookie_watcher is None:
+        _cookie_watcher = TeraboxCookieWatcher()
+
+    await _cookie_watcher.start()
+
+
+async def stop_cookie_watcher():
+    """Stop the global cookie watcher."""
+    global _cookie_watcher
+
+    if _cookie_watcher:
+        await _cookie_watcher.stop()
+
+
+async def manual_sync_cookie() -> Dict[str, any]:
+    """
+    Manually sync cookie from file to database.
+    Used by /synccookie command.
+
+    Returns:
+        dict: Sync result with status and message
+    """
+    try:
+        cookie_file = Path("terabox.txt")
+
+        # Check if file exists
+        if not await aiopath.exists(cookie_file):
+            return {
+                'success': False,
+                'message': "Cookie file 'terabox.txt' not found"
+            }
+
+        # Read cookie from file
+        async with aiopen(cookie_file, 'r') as f:
+            cookie = await f.read()
+            cookie = cookie.strip()
+
+        if not cookie:
+            return {
+                'success': False,
+                'message': "Cookie file is empty"
+            }
+
+        # Calculate hash
+        cookie_hash = hashlib.sha256(cookie.encode()).hexdigest()
+
+        # Get database metadata
+        db_metadata = await get_cookie_metadata_from_db()
+
+        # Check if already up-to-date
+        if db_metadata and db_metadata.get('hash') == cookie_hash:
+            return {
+                'success': True,
+                'message': "Cookie is already up-to-date in database",
+                'cookie_preview': cookie[:50] + "...",
+                'hash': cookie_hash[:16],
+                'already_synced': True
+            }
+
+        # Sync to database
+        success = await save_terabox_cookie_to_db(cookie, source='command')
+
+        if success:
+            return {
+                'success': True,
+                'message': "Cookie synced to database successfully",
+                'cookie_preview': cookie[:50] + "...",
+                'hash': cookie_hash[:16],
+                'already_synced': False
+            }
+        else:
+            return {
+                'success': False,
+                'message': "Failed to save cookie to database"
+            }
+
+    except Exception as e:
+        LOGGER.error(f"Error in manual cookie sync: {e}")
+        return {
+            'success': False,
+            'message': f"Error: {str(e)}"
+        }
 

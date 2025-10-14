@@ -43,3 +43,4 @@ class BotCommands:
     RssCommand = f"rss{i}"
     NzbSearchCommand = f"nzbsearch{i}"
     BypassCommand = [f"bypass{i}", f"bp{i}"]
+    SyncCookieCommand = f"synccookie{i}"

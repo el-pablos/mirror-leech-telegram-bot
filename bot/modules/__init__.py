@@ -1,6 +1,7 @@
 from .bot_settings import send_bot_settings, edit_bot_settings
 from .bypass import bypass_shortlink
 from .cancel_task import cancel, cancel_multi, cancel_all_buttons, cancel_all_update
+from .sync_cookie import sync_terabox_cookie
 from .chat_permission import authorize, unauthorize, add_sudo, remove_sudo
 from .clone import clone_node
 from .exec import aioexecute, execute, clear
@@ -39,6 +40,7 @@ __all__ = [
     "send_bot_settings",
     "edit_bot_settings",
     "bypass_shortlink",
+    "sync_terabox_cookie",
     "cancel",
     "cancel_multi",
     "cancel_all_buttons",
