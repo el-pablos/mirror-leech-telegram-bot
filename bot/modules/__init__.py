@@ -1,4 +1,5 @@
 from .bot_settings import send_bot_settings, edit_bot_settings
+from .bypass import bypass_shortlink
 from .cancel_task import cancel, cancel_multi, cancel_all_buttons, cancel_all_update
 from .chat_permission import authorize, unauthorize, add_sudo, remove_sudo
 from .clone import clone_node
@@ -37,6 +38,7 @@ from .ytdlp import ytdl, ytdl_leech
 __all__ = [
     "send_bot_settings",
     "edit_bot_settings",
+    "bypass_shortlink",
     "cancel",
     "cancel_multi",
     "cancel_all_buttons",

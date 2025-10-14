@@ -249,6 +249,13 @@ def add_handlers():
     )
     TgClient.bot.add_handler(
         MessageHandler(
+            bypass_shortlink,
+            filters=command(BotCommands.BypassCommand, case_sensitive=True)
+            & CustomFilters.authorized,
+        )
+    )
+    TgClient.bot.add_handler(
+        MessageHandler(
             bot_help,
             filters=command(BotCommands.HelpCommand, case_sensitive=True)
             & CustomFilters.authorized,
