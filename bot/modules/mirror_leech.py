@@ -323,6 +323,14 @@ class Mirror(TaskListener):
             await self.remove_from_same_dir()
             return
 
+        # Check for Terabox link BEFORE direct_link_generator
+        # to prevent it from being processed by the old terabox() function
+        if is_terabox_link(self.link):
+            LOGGER.info(f"Detected Terabox link: {self.link}")
+            downloader = TeraboxDownloader(self.link, path, self)
+            await downloader.download()
+            return
+
         if (
             not self.is_jd
             and not self.is_nzb
@@ -371,10 +379,6 @@ class Mirror(TaskListener):
             await add_rclone_download(self, f"{path}/")
         elif is_gdrive_link(self.link) or is_gdrive_id(self.link):
             await add_gd_download(self, path)
-        elif is_terabox_link(self.link):
-            LOGGER.info(f"Detected Terabox link: {self.link}")
-            downloader = TeraboxDownloader(self.link, path, self)
-            await downloader.download()
         else:
             ussr = args["-au"]
             pssw = args["-ap"]

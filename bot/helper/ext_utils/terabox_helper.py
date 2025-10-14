@@ -51,10 +51,44 @@ def is_terabox_link(url: str) -> bool:
     return any(domain in url_lower for domain in TERABOX_DOMAINS)
 
 
-async def read_terabox_cookie() -> Optional[str]:
+async def read_terabox_cookie_from_db() -> Optional[str]:
+    """
+    Read Terabox cookie from MongoDB database.
+
+    Returns:
+        str: Cookie string if exists in database, None otherwise
+    """
+    try:
+        from .db_handler import database
+        from ...core.mltb_client import TgClient
+
+        if database.db is None:
+            return None
+
+        # Get cookie from database
+        cookie_doc = await database.db.settings.cookies.find_one(
+            {"_id": TgClient.ID},
+            {"terabox_cookie": 1}
+        )
+
+        if cookie_doc and "terabox_cookie" in cookie_doc:
+            cookie = cookie_doc["terabox_cookie"]
+            if cookie and isinstance(cookie, str):
+                LOGGER.info("Terabox cookie loaded from database")
+                return cookie.strip()
+
+        return None
+
+    except Exception as e:
+        LOGGER.error(f"Error reading Terabox cookie from database: {e}")
+        return None
+
+
+async def read_terabox_cookie_from_file() -> Optional[str]:
     """
     Read Terabox cookie from terabox.txt file.
     Ignores comment lines (starting with #) and empty lines.
+    Supports both header string format and Netscape cookie format.
 
     Returns:
         str: Cookie string if file exists and valid, None otherwise
@@ -67,9 +101,36 @@ async def read_terabox_cookie() -> Optional[str]:
             return None
 
         async with aiopen(cookie_file, 'r') as f:
-            lines = await f.readlines()
+            content = await f.read()
 
-            # Filter out comments and empty lines
+        # Check if it's Netscape format
+        if "# Netscape HTTP Cookie File" in content:
+            # Parse Netscape format
+            cookie_dict = {}
+            for line in content.split('\n'):
+                line = line.strip()
+                # Skip comments and empty lines
+                if not line or line.startswith('#'):
+                    continue
+
+                # Parse Netscape cookie line
+                # Format: domain flag path secure expiration name value
+                parts = line.split('\t')
+                if len(parts) >= 7:
+                    name = parts[5]
+                    value = parts[6]
+                    # Only keep ndus and lang cookies
+                    if name in ['ndus', 'lang']:
+                        cookie_dict[name] = value
+
+            # Build cookie string
+            if cookie_dict:
+                cookie = '; '.join([f"{k}={v}" for k, v in cookie_dict.items()]) + ';'
+                LOGGER.info("Terabox cookie loaded from file (Netscape format)")
+                return cookie
+        else:
+            # Parse header string format
+            lines = content.split('\n')
             cookie_lines = []
             for line in lines:
                 line = line.strip()
@@ -81,7 +142,7 @@ async def read_terabox_cookie() -> Optional[str]:
                 LOGGER.warning("Terabox cookie file is empty or contains only comments")
                 return None
 
-            # Join all non-comment lines (in case cookie is multi-line)
+            # Join all non-comment lines
             cookie = ' '.join(cookie_lines)
 
             # Basic validation - check if cookie has required format
@@ -89,11 +150,131 @@ async def read_terabox_cookie() -> Optional[str]:
                 LOGGER.warning("Terabox cookie appears invalid (missing ndus or lang)")
                 return None
 
-            LOGGER.info("Terabox cookie loaded successfully")
+            LOGGER.info("Terabox cookie loaded from file (header format)")
             return cookie
 
+        return None
+
     except Exception as e:
-        LOGGER.error(f"Error reading Terabox cookie: {e}")
+        LOGGER.error(f"Error reading Terabox cookie from file: {e}")
+        return None
+
+
+async def read_terabox_cookie() -> Optional[str]:
+    """
+    Read Terabox cookie with fallback mechanism.
+    Priority: Database > File
+
+    Returns:
+        str: Cookie string if found, None otherwise
+    """
+    # Try database first
+    cookie = await read_terabox_cookie_from_db()
+    if cookie:
+        return cookie
+
+    # Fallback to file
+    cookie = await read_terabox_cookie_from_file()
+    if cookie:
+        # Save to database for future use
+        await save_terabox_cookie_to_db(cookie)
+        return cookie
+
+    return None
+
+
+async def save_terabox_cookie_to_db(cookie: str) -> bool:
+    """
+    Save Terabox cookie to MongoDB database.
+
+    Args:
+        cookie: Cookie string to save
+
+    Returns:
+        bool: True if saved successfully, False otherwise
+    """
+    try:
+        from .db_handler import database
+        from ...core.mltb_client import TgClient
+
+        if database.db is None:
+            return False
+
+        await database.db.settings.cookies.update_one(
+            {"_id": TgClient.ID},
+            {"$set": {"terabox_cookie": cookie}},
+            upsert=True
+        )
+
+        LOGGER.info("Terabox cookie saved to database")
+        return True
+
+    except Exception as e:
+        LOGGER.error(f"Error saving Terabox cookie to database: {e}")
+        return False
+
+
+async def save_youtube_cookie_to_db(cookie: str) -> bool:
+    """
+    Save YouTube cookie to MongoDB database.
+
+    Args:
+        cookie: Cookie string or file content to save
+
+    Returns:
+        bool: True if saved successfully, False otherwise
+    """
+    try:
+        from .db_handler import database
+        from ...core.mltb_client import TgClient
+
+        if database.db is None:
+            return False
+
+        await database.db.settings.cookies.update_one(
+            {"_id": TgClient.ID},
+            {"$set": {"youtube_cookie": cookie}},
+            upsert=True
+        )
+
+        LOGGER.info("YouTube cookie saved to database")
+        return True
+
+    except Exception as e:
+        LOGGER.error(f"Error saving YouTube cookie to database: {e}")
+        return False
+
+
+async def read_youtube_cookie_from_db() -> Optional[str]:
+    """
+    Read YouTube cookie from MongoDB database.
+
+    Returns:
+        str: Cookie string if exists in database, None otherwise
+    """
+    try:
+        from .db_handler import database
+        from ...core.mltb_client import TgClient
+
+        if database.db is None:
+            return None
+
+        # Get cookie from database
+        cookie_doc = await database.db.settings.cookies.find_one(
+            {"_id": TgClient.ID},
+            {"youtube_cookie": 1}
+        )
+
+        if cookie_doc and "youtube_cookie" in cookie_doc:
+            cookie = cookie_doc["youtube_cookie"]
+            if cookie and isinstance(cookie, str):
+                LOGGER.info("YouTube cookie loaded from database")
+                return cookie
+
+        return None
+
+    except Exception as e:
+        LOGGER.error(f"Error reading YouTube cookie from database: {e}")
         return None
 
 
@@ -122,15 +303,33 @@ async def get_terabox_file_info(url: str, cookie: str) -> Dict:
     """
     try:
         from TeraboxDL import TeraboxDL
-        
+
         LOGGER.info(f"Getting Terabox file info for: {url}")
-        
+
         # Create TeraboxDL instance
         terabox = TeraboxDL(cookie)
-        
+
         # Get file info
         file_info = terabox.get_file_info(url)
-        
+
+        # Check if file_info is None
+        if file_info is None:
+            error_msg = "Terabox API returned None. Cookie may be invalid or link may be expired."
+            LOGGER.error(error_msg)
+            return {
+                'success': False,
+                'error': error_msg
+            }
+
+        # Check if file_info is not a dict
+        if not isinstance(file_info, dict):
+            error_msg = f"Terabox API returned unexpected type: {type(file_info).__name__}"
+            LOGGER.error(error_msg)
+            return {
+                'success': False,
+                'error': error_msg
+            }
+
         # Check for errors
         if "error" in file_info:
             error_msg = file_info["error"]
@@ -139,7 +338,18 @@ async def get_terabox_file_info(url: str, cookie: str) -> Dict:
                 'success': False,
                 'error': error_msg
             }
-        
+
+        # Validate required fields
+        required_fields = ['file_name', 'download_link']
+        missing_fields = [field for field in required_fields if field not in file_info]
+        if missing_fields:
+            error_msg = f"Terabox API response missing required fields: {', '.join(missing_fields)}"
+            LOGGER.error(error_msg)
+            return {
+                'success': False,
+                'error': error_msg
+            }
+
         # Return success with file info
         LOGGER.info(f"Terabox file info retrieved: {file_info.get('file_name', 'Unknown')}")
         return {
@@ -265,15 +475,18 @@ class TeraboxDownloader:
     async def download(self):
         """
         Execute Terabox download.
-        
+
         Returns:
             bool: True if successful, False otherwise
         """
         try:
+            LOGGER.info(f"[Terabox] Starting download process for: {self.url}")
+
             # Read cookie
+            LOGGER.info("[Terabox] Reading cookie...")
             self.cookie = await read_terabox_cookie()
             if not self.cookie:
-                await self.listener.on_download_error(
+                error_msg = (
                     "Terabox cookie not found. Please add your cookie to terabox.txt file.\n\n"
                     "How to get cookie:\n"
                     "1. Login to Terabox in Edge browser\n"
@@ -282,26 +495,37 @@ class TeraboxDownloader:
                     "4. Format: lang=en; ndus=your_value;\n"
                     "5. Save to terabox.txt in bot root directory"
                 )
+                LOGGER.error("[Terabox] Cookie not found!")
+                await self.listener.on_download_error(error_msg)
                 return False
-            
+
+            LOGGER.info(f"[Terabox] Cookie loaded successfully (length: {len(self.cookie)})")
+
             # Get file info
-            LOGGER.info(f"Getting Terabox file info: {self.url}")
+            LOGGER.info(f"[Terabox] Getting file info for: {self.url}")
             info_result = await get_terabox_file_info(self.url, self.cookie)
-            
+
+            LOGGER.info(f"[Terabox] File info result: {info_result.get('success', False)}")
+
             if not info_result.get('success'):
                 error = info_result.get('error', 'Unknown error')
+                LOGGER.error(f"[Terabox] Failed to get file info: {error}")
                 await self.listener.on_download_error(f"Terabox error: {error}")
                 return False
-            
+
             self.file_info = info_result
-            
+
             # Set listener name and size
             self.listener.name = info_result.get('file_name', 'Unknown')
             self.listener.size = info_result.get('sizebytes', 0)
-            
+
+            LOGGER.info(f"[Terabox] File name: {self.listener.name}")
+            LOGGER.info(f"[Terabox] File size: {self.listener.size} bytes")
+
             # Notify download start
+            LOGGER.info("[Terabox] Notifying download start...")
             await self.listener.on_download_start()
-            
+
             # Download file with progress callback
             def progress_callback(downloaded, total, percentage):
                 """Progress callback for download updates."""
@@ -310,27 +534,32 @@ class TeraboxDownloader:
                 # Update listener progress
                 self.listener.subsize = downloaded
                 self.listener.subname = self.listener.name
-            
-            LOGGER.info(f"Starting Terabox download: {self.listener.name}")
+
+            LOGGER.info(f"[Terabox] Starting file download: {self.listener.name}")
             download_result = await download_terabox_file(
                 self.file_info,
                 self.path,
                 self.cookie,
                 progress_callback
             )
-            
+
+            LOGGER.info(f"[Terabox] Download result: {download_result.get('success', False)}")
+
             if not download_result.get('success'):
                 error = download_result.get('error', 'Unknown error')
+                LOGGER.error(f"[Terabox] Download failed: {error}")
                 await self.listener.on_download_error(f"Download failed: {error}")
                 return False
-            
+
             # Download complete
-            LOGGER.info(f"Terabox download completed: {self.listener.name}")
+            LOGGER.info(f"[Terabox] Download completed successfully: {self.listener.name}")
             await self.listener.on_download_complete()
             return True
-            
+
         except Exception as e:
-            LOGGER.error(f"Terabox download exception: {e}")
+            import traceback
+            LOGGER.error(f"[Terabox] Exception occurred: {e}")
+            LOGGER.error(f"[Terabox] Traceback: {traceback.format_exc()}")
             await self.listener.on_download_error(str(e))
             return False
     
