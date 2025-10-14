@@ -1,0 +1,40 @@
+# Terabox Cookie Configuration
+# 
+# This file contains your Terabox authentication cookie for downloading files.
+# The bot will read this file to authenticate with Terabox when downloading files.
+#
+# HOW TO GET YOUR TERABOX COOKIE:
+# ================================
+# 
+# 1. Open Microsoft Edge browser (recommended) or Chrome
+# 2. Go to https://www.terabox.com and login to your account
+# 3. After logging in, click the padlock icon (🔒) next to the URL in address bar
+# 4. Click "Permissions for this site" or "Cookies and site permissions"
+# 5. Click "Cookies and site data" → "Manage cookies and site data"
+# 6. Click "terabox.com" → Expand "Cookies" section
+# 7. Find and copy the values of these cookies:
+#    - lang (example: en)
+#    - ndus (example: Y2FiNTY4NjQ1NjQ1NjQ1NjQ1NjQ1NjQ1NjQ1NjQ1)
+# 
+# 8. Format your cookie string as follows:
+#    lang=YOUR_LANG_VALUE; ndus=YOUR_NDUS_VALUE;
+#
+# EXAMPLE:
+# ========
+# lang=en; ndus=Y2FiNTY4NjQ1NjQ1NjQ1NjQ1NjQ1NjQ1NjQ1NjQ1;
+#
+# IMPORTANT NOTES:
+# ================
+# - Make sure to include the semicolon (;) after each cookie value
+# - Do NOT share this cookie with anyone (it's like your password)
+# - Cookie may expire after some time, you'll need to update it
+# - Keep this file in the bot's root directory (same folder as bot.py)
+# - Remove the '#' symbol from the line below and replace with your actual cookie
+#
+# YOUR COOKIE (remove the # and replace with your actual cookie):
+# Example format:
+# lang=en; ndus=Y2FiNTY4NjQ1NjQ1NjQ1NjQ1NjQ1NjQ1NjQ1NjQ1;
+#
+# Uncomment the line below and add your actual cookie:
+lang=en; ndus=YOUR_NDUS_VALUE_HERE;
+

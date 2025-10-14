@@ -20,6 +20,7 @@ from ..helper.ext_utils.links_utils import (
 )
 from ..helper.ext_utils.security_utils import sanitize_filename, sanitize_path
 from ..helper.ext_utils.rate_limiter import check_rate_limit
+from ..helper.ext_utils.terabox_helper import is_terabox_link, TeraboxDownloader
 from ..helper.listeners.task_listener import TaskListener
 from ..helper.mirror_leech_utils.download_utils.aria2_download import (
     add_aria2_download,
@@ -370,6 +371,10 @@ class Mirror(TaskListener):
             await add_rclone_download(self, f"{path}/")
         elif is_gdrive_link(self.link) or is_gdrive_id(self.link):
             await add_gd_download(self, path)
+        elif is_terabox_link(self.link):
+            LOGGER.info(f"Detected Terabox link: {self.link}")
+            downloader = TeraboxDownloader(self.link, path, self)
+            await downloader.download()
         else:
             ussr = args["-au"]
             pssw = args["-ap"]

@@ -24,6 +24,7 @@ PyBypass
 pymongo
 kurigram
 python-magic
+terabox-downloader
 requests
 telegraph
 tenacity
