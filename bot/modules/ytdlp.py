@@ -5,6 +5,7 @@ from pyrogram.filters import regex, user
 from pyrogram.handlers import CallbackQueryHandler
 from time import time
 from yt_dlp import YoutubeDL
+from os import path as ospath
 
 from .. import LOGGER, bot_loop, task_dict_lock, DOWNLOAD_DIR
 from ..core.config_manager import Config
@@ -24,6 +25,25 @@ from ..helper.telegram_helper.message_utils import (
     edit_message,
     delete_message,
 )
+
+
+def get_cookie_file_for_extract(user_id=None):
+    """Get valid cookie file for yt-dlp extraction."""
+    cookie_paths = []
+
+    if user_id:
+        cookie_paths.append(f"cookies/{user_id}.txt")
+
+    cookie_paths.extend(["cookies.txt", "/usr/src/app/cookies.txt"])
+
+    for path in cookie_paths:
+        try:
+            if ospath.exists(path) and ospath.getsize(path) > 0:
+                return path
+        except:
+            continue
+
+    return None
 
 
 @new_task
@@ -426,7 +446,13 @@ class YtDlp(TaskListener):
             await send_message(self.message, e)
             await self.remove_from_same_dir()
             return
-        options = {"usenetrc": True, "cookiefile": "cookies.txt"}
+
+        # Setup options with cookie validation
+        options = {"usenetrc": True}
+        cookie_file = get_cookie_file_for_extract(self.user_id)
+        if cookie_file:
+            options["cookiefile"] = cookie_file
+
         if opt:
             for key, value in opt.items():
                 if key in ["postprocessors", "download_ranges"]:

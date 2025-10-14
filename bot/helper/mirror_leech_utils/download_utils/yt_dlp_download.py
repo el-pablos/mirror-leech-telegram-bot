@@ -3,6 +3,7 @@ from os import path as ospath, listdir
 from re import search as re_search
 from secrets import token_urlsafe
 from yt_dlp import YoutubeDL, DownloadError
+from aiofiles.os import path as aiopath
 
 from .... import task_dict_lock, task_dict
 from ...ext_utils.bot_utils import sync_to_async, async_to_sync
@@ -12,6 +13,41 @@ from ...telegram_helper.message_utils import send_status_message
 from ..status_utils.yt_dlp_status import YtDlpStatus
 
 LOGGER = getLogger(__name__)
+
+
+def get_cookie_file(user_id=None):
+    """
+    Get valid cookie file path with fallback mechanism.
+    Checks multiple locations and validates file existence.
+
+    Priority:
+    1. User-specific cookies (cookies/{user_id}.txt)
+    2. Global cookies (cookies.txt)
+    3. None (download without cookies)
+    """
+    cookie_paths = []
+
+    # User-specific cookies
+    if user_id:
+        cookie_paths.append(f"cookies/{user_id}.txt")
+
+    # Global cookies
+    cookie_paths.extend([
+        "cookies.txt",
+        "/usr/src/app/cookies.txt"
+    ])
+
+    for path in cookie_paths:
+        try:
+            if ospath.exists(path) and ospath.getsize(path) > 0:
+                LOGGER.info(f"Using cookie file: {path}")
+                return path
+        except Exception as e:
+            LOGGER.warning(f"Error checking cookie file {path}: {e}")
+            continue
+
+    LOGGER.warning("No valid cookies.txt found. Downloading without cookies. Some sites may require authentication.")
+    return None
 
 
 class MyLogger:
@@ -51,11 +87,14 @@ class YoutubeDLHelper:
         self._gid = ""
         self._ext = ""
         self.is_playlist = False
+
+        # Get cookie file with validation
+        cookie_file = get_cookie_file(getattr(listener, 'user_id', None))
+
         self.opts = {
             "progress_hooks": [self._on_download_progress],
             "logger": MyLogger(self, self._listener),
             "usenetrc": True,
-            "cookiefile": "cookies.txt",
             "allow_multiple_video_streams": True,
             "allow_multiple_audio_streams": True,
             "noprogress": True,
@@ -72,6 +111,10 @@ class YoutubeDLHelper:
                 "extractor": lambda n: 3,
             },
         }
+
+        # Only add cookiefile if valid cookie exists
+        if cookie_file:
+            self.opts["cookiefile"] = cookie_file
 
     @property
     def download_speed(self):

@@ -4,6 +4,7 @@ from importlib import import_module
 from pymongo import AsyncMongoClient
 from pymongo.server_api import ServerApi
 from pymongo.errors import PyMongoError
+from asyncio import sleep
 
 from ... import LOGGER, user_data, rss_dict, qbit_options
 from ...core.mltb_client import TgClient
@@ -15,24 +16,50 @@ class DbManager:
         self._return = True
         self._conn = None
         self.db = None
+        self._max_retries = 3
+        self._retry_delay = 5  # seconds
 
-    async def connect(self):
+    async def connect(self, retry_count=0):
+        """
+        Connect to MongoDB with retry mechanism.
+        Uses exponential backoff for retries.
+        """
         try:
             if self._conn is not None:
                 await self._conn.close()
+
+            LOGGER.info(f"Connecting to database... (Attempt {retry_count + 1}/{self._max_retries + 1})")
+
             self._conn = AsyncMongoClient(
                 Config.DATABASE_URL,
                 server_api=ServerApi("1"),
                 connectTimeoutMS=60000,
                 serverSelectionTimeoutMS=60000,
+                retryWrites=True,
+                retryReads=True,
             )
+
+            # Test connection
+            await self._conn.admin.command('ping')
+
             self.db = self._conn.mltb
             self._return = False
+            LOGGER.info("Database connected successfully")
+
         except PyMongoError as e:
-            LOGGER.error(f"Error in DB connection: {e}")
-            self.db = None
-            self._return = True
-            self._conn = None
+            LOGGER.error(f"Error in DB connection (Attempt {retry_count + 1}): {e}")
+
+            # Retry logic with exponential backoff
+            if retry_count < self._max_retries:
+                delay = self._retry_delay * (2 ** retry_count)  # Exponential backoff
+                LOGGER.info(f"Retrying in {delay} seconds...")
+                await sleep(delay)
+                return await self.connect(retry_count + 1)
+            else:
+                LOGGER.error(f"Failed to connect to database after {self._max_retries + 1} attempts")
+                self.db = None
+                self._return = True
+                self._conn = None
 
     async def disconnect(self):
         self._return = True

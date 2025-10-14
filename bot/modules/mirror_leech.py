@@ -18,6 +18,8 @@ from ..helper.ext_utils.links_utils import (
     is_telegram_link,
     is_gdrive_id,
 )
+from ..helper.ext_utils.security_utils import sanitize_filename, sanitize_path
+from ..helper.ext_utils.rate_limiter import check_rate_limit
 from ..helper.listeners.task_listener import TaskListener
 from ..helper.mirror_leech_utils.download_utils.aria2_download import (
     add_aria2_download,
@@ -114,7 +116,9 @@ class Mirror(TaskListener):
 
         self.select = args["-s"]
         self.seed = args["-d"]
-        self.name = args["-n"]
+        # Sanitize filename to prevent path traversal
+        raw_name = args["-n"]
+        self.name = sanitize_filename(raw_name) if raw_name else ""
         self.up_dest = args["-up"]
         self.rc_flags = args["-rcf"]
         self.link = args["link"]
@@ -135,7 +139,13 @@ class Mirror(TaskListener):
         self.thumbnail_layout = args["-tl"]
         self.as_doc = args["-doc"]
         self.as_med = args["-med"]
-        self.folder_name = f"/{args["-m"]}".rstrip("/") if len(args["-m"]) > 0 else ""
+        # Sanitize folder name to prevent path traversal
+        raw_folder = args["-m"]
+        if raw_folder:
+            safe_folder = sanitize_filename(raw_folder)
+            self.folder_name = f"/{safe_folder}".rstrip("/")
+        else:
+            self.folder_name = ""
         self.bot_trans = args["-bt"]
         self.user_trans = args["-ut"]
         self.ffmpeg_cmds = args["-ff"]
@@ -297,6 +307,13 @@ class Mirror(TaskListener):
 
         if len(self.link) > 0:
             LOGGER.info(self.link)
+
+        # Check rate limit
+        is_allowed, rate_msg = await check_rate_limit(self.user_id, "download")
+        if not is_allowed:
+            await send_message(self.message, rate_msg)
+            await self.remove_from_same_dir()
+            return
 
         try:
             await self.before_start()

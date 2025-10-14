@@ -107,22 +107,6 @@ async def bot_stats(_, message):
 └ 7z: {commands["7z"]}
 
 🔥 <b>Powered by TamsHub - High Performance Computing</b>"""
-<b>SWAP:</b> {get_readable_file_size(swap.total)} | <b>Used:</b> {swap.percent}%
-
-<b>Memory Total:</b> {get_readable_file_size(memory.total)}
-<b>Memory Free:</b> {get_readable_file_size(memory.available)}
-<b>Memory Used:</b> {get_readable_file_size(memory.used)}
-
-<b>python:</b> {commands["python"]}
-<b>aria2:</b> {commands["aria2"]}
-<b>qBittorrent:</b> {commands["qBittorrent"]}
-<b>SABnzbd+:</b> {commands["SABnzbd+"]}
-<b>rclone:</b> {commands["rclone"]}
-<b>yt-dlp:</b> {commands["yt-dlp"]}
-<b>ffmpeg:</b> {commands["ffmpeg"]}
-<b>7z:</b> {commands["7z"]}
-"""
->>>>>>> origin/master
     await send_message(message, stats)
 
 
