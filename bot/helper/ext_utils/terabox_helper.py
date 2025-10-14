@@ -278,14 +278,49 @@ async def read_youtube_cookie_from_db() -> Optional[str]:
         return None
 
 
+def format_cookie_for_terabox(cookie: str) -> str:
+    """
+    Format cookie string to ensure compatibility with TeraboxDL library.
+    Extracts only essential cookies (ndus, lang) and formats them properly.
+
+    Args:
+        cookie: Raw cookie string
+
+    Returns:
+        str: Formatted cookie string with only essential cookies
+    """
+    # Extract ndus and lang values
+    cookie_dict = {}
+
+    # Split by semicolon and parse each cookie
+    for part in cookie.split(';'):
+        part = part.strip()
+        if '=' in part:
+            key, value = part.split('=', 1)
+            key = key.strip()
+            value = value.strip()
+            # Only keep essential cookies
+            if key in ['ndus', 'lang', 'ndut_fmt', 'browserid', 'csrfToken']:
+                cookie_dict[key] = value
+
+    # Build formatted cookie string
+    if 'ndus' in cookie_dict and 'lang' in cookie_dict:
+        formatted = f"lang={cookie_dict['lang']}; ndus={cookie_dict['ndus']};"
+        LOGGER.info(f"Formatted cookie: lang={cookie_dict['lang']}; ndus={cookie_dict['ndus'][:20]}...")
+        return formatted
+    else:
+        LOGGER.warning("Cookie missing essential fields (ndus or lang)")
+        return cookie
+
+
 async def get_terabox_file_info(url: str, cookie: str) -> Dict:
     """
     Get file information from Terabox URL using cookie authentication.
-    
+
     Args:
         url: Terabox share URL
         cookie: Terabox authentication cookie
-        
+
     Returns:
         dict: File information or error
             Success: {
@@ -306,11 +341,17 @@ async def get_terabox_file_info(url: str, cookie: str) -> Dict:
 
         LOGGER.info(f"Getting Terabox file info for: {url}")
 
+        # Format cookie for better compatibility
+        formatted_cookie = format_cookie_for_terabox(cookie)
+
         # Create TeraboxDL instance
-        terabox = TeraboxDL(cookie)
+        terabox = TeraboxDL(formatted_cookie)
 
         # Get file info
         file_info = terabox.get_file_info(url)
+
+        # Log the raw response for debugging
+        LOGGER.info(f"TeraboxDL raw response: {file_info}")
 
         # Check if file_info is None
         if file_info is None:
@@ -350,8 +391,38 @@ async def get_terabox_file_info(url: str, cookie: str) -> Dict:
                 'error': error_msg
             }
 
+        # Validate download_link is not empty
+        download_link = file_info.get('download_link', '').strip()
+        if not download_link:
+            error_msg = (
+                "Terabox API returned empty download link. "
+                "This usually means:\n"
+                "1. Cookie is invalid or expired\n"
+                "2. Link requires login/authentication\n"
+                "3. File has been deleted or is no longer accessible\n"
+                "4. Terabox API has changed\n\n"
+                "Please try:\n"
+                "- Update your Terabox cookie in terabox.txt\n"
+                "- Verify the link is accessible in browser while logged in\n"
+                "- Check if the file still exists"
+            )
+            LOGGER.error(error_msg)
+            LOGGER.error(f"File info received: {file_info}")
+            return {
+                'success': False,
+                'error': error_msg
+            }
+
+        # Validate sizebytes
+        sizebytes = file_info.get('sizebytes', 0)
+        if sizebytes == 0:
+            LOGGER.warning(f"Terabox file size is 0 bytes, this may indicate an issue")
+            LOGGER.warning(f"File info: {file_info}")
+
         # Return success with file info
         LOGGER.info(f"Terabox file info retrieved: {file_info.get('file_name', 'Unknown')}")
+        LOGGER.info(f"Download link: {download_link[:100]}...")
+        LOGGER.info(f"File size: {sizebytes} bytes")
         return {
             'success': True,
             **file_info
@@ -402,14 +473,17 @@ async def download_terabox_file(
     """
     try:
         from TeraboxDL import TeraboxDL
-        
+
         # Ensure save_path exists
         os.makedirs(save_path, exist_ok=True)
-        
+
         LOGGER.info(f"Downloading Terabox file to: {save_path}")
-        
+
+        # Format cookie for better compatibility
+        formatted_cookie = format_cookie_for_terabox(cookie)
+
         # Create TeraboxDL instance
-        terabox = TeraboxDL(cookie)
+        terabox = TeraboxDL(formatted_cookie)
         
         # Download file
         result = terabox.download(
