@@ -1,0 +1,104 @@
+# Environment Variables for Render.com Deployment
+# Copy and paste these into Render Dashboard → Environment tab
+
+# REQUIRED CONFIGURATION
+BOT_TOKEN=8024373376:AAEz4GX0D0q1qARO-ym-UE5Z_JQdxw6umBA
+OWNER_ID=5476148500
+TELEGRAM_API=18555351
+TELEGRAM_HASH=9227b60247cb82162d27c33d942088c1
+
+# DATABASE (REQUIRED for persistence)
+DATABASE_URL=mongodb+srv://kontol:kontolodon@mirrornich.8ki9rl1.mongodb.net/?retryWrites=true&w=majority&appName=mirrornich
+
+# GOOGLE DRIVE CONFIGURATION
+GDRIVE_ID=1-4UtCyFF1bdVZS4l3-Gbpv6_fclq-1Pe
+IS_TEAM_DRIVE=False
+STOP_DUPLICATE=False
+INDEX_URL=
+
+# UPLOAD & STATUS SETTINGS
+DEFAULT_UPLOAD=gd
+STATUS_LIMIT=10
+STATUS_UPDATE_INTERVAL=7
+INCOMPLETE_TASK_NOTIFIER=True
+USE_SERVICE_ACCOUNTS=False
+
+# LEECH SETTINGS
+AS_DOCUMENT=False
+EQUAL_SPLITS=False
+MEDIA_GROUP=False
+USER_TRANSMISSION=False
+HYBRID_LEECH=False
+LEECH_SPLIT_SIZE=0
+LEECH_FILENAME_PREFIX=
+LEECH_DUMP_CHAT=
+THUMBNAIL_LAYOUT=
+
+# WEB SERVER SETTINGS
+BASE_URL=
+BASE_URL_PORT=80
+WEB_PINCODE=False
+
+# TORRENT/DOWNLOAD SETTINGS
+TORRENT_TIMEOUT=0
+
+# QUEUE SETTINGS
+QUEUE_ALL=0
+QUEUE_DOWNLOAD=0
+QUEUE_UPLOAD=0
+
+# RSS SETTINGS
+RSS_DELAY=600
+RSS_CHAT=
+RSS_SIZE_LIMIT=0
+
+# SEARCH SETTINGS
+SEARCH_API_LINK=
+SEARCH_LIMIT=0
+SEARCH_PLUGINS=["https://raw.githubusercontent.com/qbittorrent/search-plugins/master/nova3/engines/piratebay.py","https://raw.githubusercontent.com/qbittorrent/search-plugins/master/nova3/engines/limetorrents.py","https://raw.githubusercontent.com/qbittorrent/search-plugins/master/nova3/engines/torlock.py","https://raw.githubusercontent.com/qbittorrent/search-plugins/master/nova3/engines/torrentscsv.py","https://raw.githubusercontent.com/qbittorrent/search-plugins/master/nova3/engines/eztv.py","https://raw.githubusercontent.com/qbittorrent/search-plugins/master/nova3/engines/torrentproject.py","https://raw.githubusercontent.com/MaurizioRicci/qBittorrent_search_engines/master/kickass_torrent.py","https://raw.githubusercontent.com/MaurizioRicci/qBittorrent_search_engines/master/yts_am.py","https://raw.githubusercontent.com/MadeOfMagicAndWires/qBit-plugins/master/engines/linuxtracker.py","https://raw.githubusercontent.com/MadeOfMagicAndWires/qBit-plugins/master/engines/nyaasi.py","https://raw.githubusercontent.com/LightDestory/qBittorrent-Search-Plugins/master/src/engines/ettv.py","https://raw.githubusercontent.com/LightDestory/qBittorrent-Search-Plugins/master/src/engines/glotorrents.py","https://raw.githubusercontent.com/LightDestory/qBittorrent-Search-Plugins/master/src/engines/thepiratebay.py","https://raw.githubusercontent.com/v1k45/1337x-qBittorrent-search-plugin/master/leetx.py","https://raw.githubusercontent.com/nindogo/qbtSearchScripts/master/magnetdl.py","https://raw.githubusercontent.com/msagca/qbittorrent_plugins/main/uniondht.py","https://raw.githubusercontent.com/khensolomon/leyts/master/yts.py"]
+
+# RCLONE SETTINGS
+RCLONE_PATH=
+RCLONE_FLAGS=
+RCLONE_SERVE_URL=
+RCLONE_SERVE_PORT=0
+RCLONE_SERVE_USER=
+RCLONE_SERVE_PASS=
+
+# JDOWNLOADER SETTINGS
+JD_EMAIL=
+JD_PASS=
+
+# USENET/SABNZBD SETTINGS
+USENET_SERVERS=[{"name":"main","host":"","port":563,"timeout":60,"username":"","password":"","connections":8,"ssl":1,"ssl_verify":2,"ssl_ciphers":"","enable":1,"required":0,"optional":0,"retention":0,"send_group":0,"priority":0}]
+
+# NZB SEARCH SETTINGS
+HYDRA_IP=
+HYDRA_API_KEY=
+
+# UPDATE SETTINGS
+UPSTREAM_REPO=
+UPSTREAM_BRANCH=master
+
+# OPTIONAL SETTINGS
+CMD_SUFFIX=
+AUTHORIZED_CHATS=
+SUDO_USERS=
+USER_SESSION_STRING=
+FILELION_API=
+STREAMWISH_API=
+EXCLUDED_EXTENSIONS=
+YT_DLP_OPTIONS=
+NAME_SUBSTITUTE=
+FFMPEG_CMDS={}
+UPLOAD_PATHS={}
+TG_PROXY={}
+
+# NOTE: After adding these variables in Render Dashboard:
+# 1. Go to "Disks" tab
+# 2. Add a new disk:
+#    - Name: bot-storage
+#    - Mount Path: /usr/src/app/downloads
+#    - Size: 10 GB (or more as needed)
+# 3. Save and deploy
+
