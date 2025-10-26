@@ -217,14 +217,6 @@ class Config:
             )
             cls._load_from_env()
 
-        # Support Render.com and other PaaS platforms that use PORT env variable
-        if port := getenv('PORT'):
-            try:
-                cls.BASE_URL_PORT = int(port)
-                LOGGER.info(f"Using PORT from environment: {port}")
-            except ValueError:
-                LOGGER.warning(f"Invalid PORT value: {port}, using default")
-
         cls._validate_required_config()
 
     @classmethod

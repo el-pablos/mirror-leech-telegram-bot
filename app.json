@@ -1,0 +1,31 @@
+{
+  "name": "Mirror-Leech Telegram Bot",
+  "description": "Telegram bot for mirroring and leeching files to Google Drive, Telegram, and cloud storage",
+  "repository": "https://github.com/el-pablos/mirror-leech-telegram-bot",
+  "keywords": [
+    "telegram",
+    "bot",
+    "mirror",
+    "leech",
+    "google-drive",
+    "aria2",
+    "qbittorrent",
+    "sabnzbd",
+    "jdownloader"
+  ],
+  "stack": "container",
+  "formation": {
+    "worker": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "buildpacks": [],
+  "env": {
+    "CONFIG_FILE_URL": {
+      "description": "Direct link to config.py file (optional, if you want to load config from URL)",
+      "required": false
+    }
+  }
+}
+

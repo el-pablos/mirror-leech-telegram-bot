@@ -3,7 +3,6 @@ from aiofiles import open as aiopen
 from aioshutil import rmtree
 from asyncio import create_subprocess_exec, create_subprocess_shell
 from importlib import import_module
-from os import getenv
 
 from .. import (
     aria2_options,
@@ -240,11 +239,8 @@ async def load_configurations():
     ).wait()
 
     if Config.BASE_URL:
-        # Support Render.com and other PaaS platforms that use PORT env variable
-        port = int(getenv('PORT', Config.BASE_URL_PORT))
-        LOGGER.info(f"Starting web server on port {port}")
         await create_subprocess_shell(
-            f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{port}"
+            f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{Config.BASE_URL_PORT}"
         )
 
     if await aiopath.exists("cfg.zip"):
