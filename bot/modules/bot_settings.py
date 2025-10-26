@@ -9,7 +9,7 @@ from asyncio import (
 )
 from functools import partial
 from io import BytesIO
-from os import getcwd
+from os import getcwd, getenv
 from pyrogram.filters import create
 from pyrogram.handlers import MessageHandler
 from time import time
@@ -264,8 +264,10 @@ async def edit_variable(_, message, pre_message, key):
         value = int(value)
         if Config.BASE_URL:
             await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
+            # Support Render.com and other PaaS platforms
+            port = int(getenv('PORT', value))
             await create_subprocess_shell(
-                f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{value}"
+                f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{port}"
             )
     elif key == "EXCLUDED_EXTENSIONS":
         fx = value.split()
@@ -598,8 +600,10 @@ async def edit_bot_settings(client, query):
                 await (
                     await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")
                 ).wait()
+                # Support Render.com and other PaaS platforms
+                port = int(getenv('PORT', value))
                 await create_subprocess_shell(
-                    f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{value}"
+                    f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{port}"
                 )
         elif data[2] == "GDRIVE_ID":
             if drives_names and drives_names[0] == "Main":
@@ -860,8 +864,10 @@ async def load_config():
 
     await (await create_subprocess_exec("pkill", "-9", "-f", "gunicorn")).wait()
     if Config.BASE_URL:
+        # Support Render.com and other PaaS platforms
+        port = int(getenv('PORT', Config.BASE_URL_PORT))
         await create_subprocess_shell(
-            f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{Config.BASE_URL_PORT}"
+            f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{port}"
         )
 
     if Config.DATABASE_URL:

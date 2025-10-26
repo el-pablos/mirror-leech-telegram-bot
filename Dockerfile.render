@@ -1,0 +1,30 @@
+FROM anasty17/mltb:latest
+
+# Set working directory
+WORKDIR /usr/src/app
+RUN chmod 777 /usr/src/app
+
+# Create Python virtual environment
+RUN python3 -m venv mltbenv
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN mltbenv/bin/pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Make scripts executable
+RUN chmod +x start.sh aria-nox-nzb.sh start_render.sh
+
+# Render.com uses PORT environment variable
+# This will be set automatically by Render
+ENV PORT=10000
+
+# Health check endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/ || exit 1
+
+# Use the Render-optimized start script
+CMD ["bash", "start_render.sh"]
+

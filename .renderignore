@@ -1,0 +1,108 @@
+# Render.com ignore file
+# Files and directories to exclude from deployment
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+log.txt
+rlog.txt
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Documentation (keep only essential)
+*.md
+!README.md
+!README_RENDER.md
+!RENDER_DEPLOYMENT.md
+
+# Development files
+.editorconfig
+.prettierrc
+.eslintrc
+
+# CI/CD (not needed on Render)
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Docker files (Render uses Dockerfile.render)
+Dockerfile
+!Dockerfile.render
+docker-compose.yml
+
+# Heroku files (not needed)
+Procfile
+app.json
+heroku.yml
+
+# Captain files (not needed)
+captain-definition
+
+# Local config (use environment variables instead)
+config.py
+!config_sample.py
+
+# Private files (should be uploaded via bot or stored in MongoDB)
+token.pickle
+credentials.json
+accounts/
+rclone.conf
+.netrc
+cookies.txt
+cfg.zip
+
+# Downloads directory (will be on persistent disk)
+downloads/
+
+# Thumbnails (stored in MongoDB)
+thumbnails/
+
+# Tokens (stored in MongoDB)
+tokens/
+
+# User rclone configs (stored in MongoDB)
+rclone/
+
+# Test files
+tests/
+test_*.py
+*_test.py
+
+# Coverage reports
+.coverage
+htmlcov/
+
