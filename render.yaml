@@ -1,0 +1,233 @@
+services:
+  # Main Mirror-Leech Telegram Bot Service
+  - type: web
+    name: mirror-leech-bot
+    runtime: docker
+    repo: https://github.com/el-pablos/mirror-leech-telegram-bot
+    branch: render
+    dockerfilePath: ./Dockerfile.render
+    dockerContext: .
+    
+    # Resource allocation - Render requires adequate resources for this bot
+    plan: standard  # 512MB RAM, 0.5 CPU - minimum recommended
+    # For better performance, consider: standard-plus (1GB), pro (2GB), or pro-plus (4GB)
+    
+    # Environment variables - REQUIRED: Set these in Render Dashboard
+    envVars:
+      # Required Telegram Bot Configuration
+      - key: BOT_TOKEN
+        sync: false  # Set manually in Render dashboard for security
+      
+      - key: OWNER_ID
+        sync: false  # Your Telegram user ID
+      
+      - key: TELEGRAM_API
+        sync: false  # From my.telegram.org
+      
+      - key: TELEGRAM_HASH
+        sync: false  # From my.telegram.org
+      
+      # Database Configuration (Recommended)
+      - key: DATABASE_URL
+        sync: false  # MongoDB connection string
+      
+      # Optional: Telegram User Session
+      - key: USER_SESSION_STRING
+        value: ""
+      
+      # Optional: Command Suffix
+      - key: CMD_SUFFIX
+        value: ""
+      
+      # Optional: Authorized Chats (space-separated chat IDs)
+      - key: AUTHORIZED_CHATS
+        value: ""
+      
+      # Optional: Sudo Users (space-separated user IDs)
+      - key: SUDO_USERS
+        value: ""
+      
+      # Status and UI Configuration
+      - key: STATUS_LIMIT
+        value: "4"
+      
+      - key: STATUS_UPDATE_INTERVAL
+        value: "15"
+      
+      - key: DEFAULT_UPLOAD
+        value: "rc"
+      
+      # File Handling
+      - key: EXCLUDED_EXTENSIONS
+        value: ""
+      
+      - key: INCOMPLETE_TASK_NOTIFIER
+        value: "False"
+      
+      # API Keys (Optional)
+      - key: FILELION_API
+        value: ""
+      
+      - key: STREAMWISH_API
+        value: ""
+      
+      # Google Drive Configuration (Optional)
+      - key: GDRIVE_ID
+        value: ""
+      
+      - key: IS_TEAM_DRIVE
+        value: "False"
+      
+      - key: STOP_DUPLICATE
+        value: "False"
+      
+      - key: INDEX_URL
+        value: ""
+      
+      - key: USE_SERVICE_ACCOUNTS
+        value: "False"
+      
+      # Rclone Configuration (Optional)
+      - key: RCLONE_PATH
+        value: ""
+      
+      - key: RCLONE_FLAGS
+        value: ""
+      
+      - key: RCLONE_SERVE_URL
+        fromService:
+          type: web
+          name: mirror-leech-bot
+          property: host
+      
+      - key: RCLONE_SERVE_PORT
+        value: "8080"
+      
+      - key: RCLONE_SERVE_USER
+        value: ""
+      
+      - key: RCLONE_SERVE_PASS
+        value: ""
+      
+      # Base URL for web interface (auto-configured for Render)
+      - key: BASE_URL
+        fromService:
+          type: web
+          name: mirror-leech-bot
+          property: host
+      
+      # PORT is automatically set by Render
+      - key: BASE_URL_PORT
+        fromService:
+          type: web
+          name: mirror-leech-bot
+          property: port
+      
+      # JDownloader Configuration (Optional)
+      - key: JD_EMAIL
+        value: ""
+      
+      - key: JD_PASS
+        value: ""
+      
+      # Leech Configuration
+      - key: LEECH_SPLIT_SIZE
+        value: "2097152000"  # 2GB default
+      
+      - key: AS_DOCUMENT
+        value: "False"
+      
+      - key: EQUAL_SPLITS
+        value: "False"
+      
+      - key: MEDIA_GROUP
+        value: "False"
+      
+      - key: USER_TRANSMISSION
+        value: "False"
+      
+      - key: HYBRID_LEECH
+        value: "False"
+      
+      - key: LEECH_FILENAME_PREFIX
+        value: ""
+      
+      - key: LEECH_DUMP_CHAT
+        value: ""
+      
+      - key: THUMBNAIL_LAYOUT
+        value: ""
+      
+      # Torrent Configuration
+      - key: TORRENT_TIMEOUT
+        value: "0"
+      
+      - key: WEB_PINCODE
+        value: "False"
+      
+      # Queue System
+      - key: QUEUE_ALL
+        value: "0"
+      
+      - key: QUEUE_DOWNLOAD
+        value: "0"
+      
+      - key: QUEUE_UPLOAD
+        value: "0"
+      
+      # RSS Configuration
+      - key: RSS_DELAY
+        value: "600"
+      
+      - key: RSS_CHAT
+        value: ""
+      
+      - key: RSS_SIZE_LIMIT
+        value: "0"
+      
+      # Search Configuration
+      - key: SEARCH_API_LINK
+        value: ""
+      
+      - key: SEARCH_LIMIT
+        value: "0"
+      
+      # Update Configuration
+      - key: UPSTREAM_REPO
+        value: "https://github.com/el-pablos/mirror-leech-telegram-bot"
+      
+      - key: UPSTREAM_BRANCH
+        value: "render"
+      
+      # NZB Search (Optional)
+      - key: HYDRA_IP
+        value: ""
+      
+      - key: HYDRA_API_KEY
+        value: ""
+    
+    # Persistent disk for downloads and temporary files
+    disk:
+      name: bot-storage
+      mountPath: /usr/src/app/downloads
+      sizeGB: 10  # Adjust based on your needs (10GB minimum recommended)
+    
+    # Health check configuration
+    healthCheckPath: /
+    
+    # Auto-deploy on push to render branch
+    autoDeploy: true
+    
+    # Build configuration
+    buildCommand: echo "Using Docker build"
+    
+    # Start command (handled by Dockerfile CMD)
+    # The Dockerfile already specifies: CMD ["bash", "start.sh"]
+
+# Optional: Add a PostgreSQL or MongoDB database if not using external MongoDB
+# databases:
+#   - name: bot-mongodb
+#     databaseName: mltb
+#     user: mltb_user
+#     plan: starter  # Free tier available
+
